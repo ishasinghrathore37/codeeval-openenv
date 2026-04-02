@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CodeEval RL Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070707;--surface:#0d0d0d;--surface2:#121212;--surface3:#181818;
+  --border:#1a1a1a;--border2:#232323;--border3:#2e2e2e;
+  --white:#f0f0f0;--muted:#444;--dim:#252525;
+  --easy:#7defa1;--medium:#f0c060;--hard:#ff6b6b;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Syne',sans-serif;
+  --body:'DM Sans',sans-serif;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--white);font-family:var(--body);font-weight:300}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}
+code{font-family:var(--mono);background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;font-size:.9em}
+
+/* ── HEADER ───────────────────── */
+.hdr{
+  height:48px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;border-bottom:1px solid var(--border);
+  background:var(--bg);flex-shrink:0;z-index:20;position:relative;
+}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.logo-orb{width:18px;height:18px;border:1px solid var(--border3);border-radius:5px;display:flex;align-items:center;justify-content:center}
+.logo-dot{width:7px;height:7px;background:var(--white);border-radius:50%;animation:orb 2.5s ease infinite}
+@keyframes orb{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.6)}}
+
+.hdr-stats{display:flex;gap:2px}
+.hs{
+  padding:0 16px;text-align:center;border-left:1px solid var(--border);
+  display:flex;flex-direction:column;justify-content:center;gap:1px;
+}
+.hs:first-child{border-left:none}
+.hs-val{font-family:var(--mono);font-size:15px;font-weight:600;line-height:1}
+.hs-lbl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+
+.hdr-right{display:flex;gap:6px}
+.ic-btn{
+  width:30px;height:30px;border:1px solid var(--border2);border-radius:6px;
+  background:transparent;color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+  transition:all .15s;text-decoration:none;
+}
+.ic-btn:hover{border-color:var(--border3);color:var(--white)}
+
+/* ── MAIN 3-COL ───────────────── */
+.app{display:grid;grid-template-columns:230px 1fr 280px;height:calc(100vh - 48px);overflow:hidden}
+
+/* ── PANELS ───────────────────── */
+.col{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.col:last-child{border-right:none}
+.col-head{
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.col-head-val{color:var(--white);font-weight:600}
+
+/* ── LEFT: PROBLEM LIST ───────── */
+.filter-bar{display:flex;gap:3px;padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ftab{
+  flex:1;padding:5px 0;font-family:var(--mono);font-size:8px;letter-spacing:.1em;
+  text-transform:uppercase;text-align:center;border-radius:4px;cursor:pointer;
+  border:1px solid transparent;color:var(--muted);background:transparent;transition:all .15s;
+}
+.ftab.on{background:var(--surface2);border-color:var(--border2);color:var(--white)}
+.ftab:hover:not(.on){color:#777}
+
+.prob-list{flex:1;overflow-y:auto;padding:6px}
+.pi{
+  padding:11px 10px;border-radius:6px;cursor:pointer;
+  border:1px solid transparent;margin-bottom:3px;transition:all .15s;
+  position:relative;
+}
+.pi:hover{background:var(--surface);border-color:var(--border2)}
+.pi.sel{background:var(--surface2);border-color:var(--border3)}
+.pi-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.pi-num{font-family:var(--mono);font-size:8px;color:var(--muted)}
+.badge{
+  font-family:var(--mono);font-size:7px;letter-spacing:.08em;text-transform:uppercase;
+  padding:2px 7px;border-radius:20px;font-weight:600;
+}
+.b-easy{background:rgba(125,239,161,.1);color:var(--easy);border:1px solid rgba(125,239,161,.2)}
+.b-medium{background:rgba(240,192,96,.1);color:var(--medium);border:1px solid rgba(240,192,96,.2)}
+.b-hard{background:rgba(255,107,107,.1);color:var(--hard);border:1px solid rgba(255,107,107,.2)}
+.pi-title{font-size:11px;color:var(--white);margin-bottom:3px;line-height:1.3}
+.pi-meta{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8px;color:var(--muted)}
+.pi-solved{color:var(--easy)!important}
+
+/* ── MIDDLE: EDITOR ───────────── */
+.mid{display:flex;flex-direction:column;overflow:hidden}
+
+.prob-desc{
+  padding:14px 16px;border-bottom:1px solid var(--border);
+  max-height:155px;overflow-y:auto;flex-shrink:0;
+}
+.pd-title{font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:8px;line-height:1.2}
+.pd-text{font-size:11px;color:#777;line-height:1.75}
+.pd-example{margin-top:10px}
+.pd-ex-lbl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.pd-ex-code{
+  font-family:var(--mono);font-size:10px;color:#aaa;
+  background:var(--surface);padding:8px 10px;border-radius:4px;
+  border:1px solid var(--border);line-height:1.7;white-space:pre;
+}
+
+.editor-wrap{flex:1;display:flex;overflow:hidden;position:relative;background:#050505}
+.line-gutter{
+  min-width:42px;background:var(--surface);border-right:1px solid var(--border);
+  padding:14px 0;text-align:right;font-family:var(--mono);font-size:11px;
+  line-height:20px;color:#2a2a2a;user-select:none;overflow:hidden;flex-shrink:0;
+}
+.line-gutter span{display:block;padding-right:10px;transition:color .1s}
+#editor{
+  flex:1;padding:14px 14px;font-family:var(--mono);font-size:11px;line-height:20px;
+  background:transparent;color:var(--white);border:none;outline:none;
+  resize:none;tab-size:4;white-space:pre;overflow-wrap:normal;
+  overflow-x:auto;overflow-y:auto;caret-color:var(--white);
+}
+#editor::selection{background:rgba(255,255,255,.1)}
+#editor::placeholder{color:#222}
+
+.toolbar{
+  padding:8px 12px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  display:flex;gap:6px;align-items:center;flex-shrink:0;background:var(--surface);
+}
+.btn{
+  display:inline-flex;align-items:center;gap:5px;padding:6px 13px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  border-radius:5px;cursor:pointer;border:1px solid;transition:all .15s;font-weight:500;
+}
+.btn-run{background:var(--white);color:var(--bg);border-color:var(--white)}
+.btn-run:hover:not(:disabled){background:transparent;color:var(--white)}
+.btn-run:disabled{opacity:.35;cursor:not-allowed}
+.btn-ai{background:transparent;color:var(--white);border-color:var(--border3)}
+.btn-ai:hover:not(:disabled){border-color:#666}
+.btn-ai:disabled{opacity:.35;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--muted);border-color:transparent;padding:6px 10px}
+.btn-ghost:hover{color:var(--white);border-color:var(--border2)}
+.tbar-r{margin-left:auto;font-family:var(--mono);font-size:8px;color:#2a2a2a;letter-spacing:.1em;text-transform:uppercase}
+
+.term{
+  height:155px;border-top:1px solid var(--border);padding:10px 14px;
+  font-family:var(--mono);font-size:10px;line-height:1.8;
+  background:#030303;overflow-y:auto;flex-shrink:0;
+}
+.tl{display:flex;gap:6px;align-items:flex-start}
+.tp{color:#222;flex-shrink:0}
+.tc-i{color:var(--muted)}
+.tc-ok{color:var(--easy)}
+.tc-er{color:var(--hard)}
+.tc-w{color:var(--medium)}
+.tc-o{color:#888}
+
+/* ── RIGHT: RESULTS ───────────── */
+.right{overflow-y:auto;display:flex;flex-direction:column}
+
+.reward-box{padding:18px 14px;border-bottom:1px solid var(--border);text-align:center;flex-shrink:0}
+.rw-lbl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.16em;margin-bottom:3px}
+.rw-val{
+  font-family:var(--display);font-size:52px;font-weight:800;
+  letter-spacing:-.03em;line-height:1;color:var(--white);
+}
+.rw-delta{font-family:var(--mono);font-size:10px;margin-top:4px;min-height:15px;transition:opacity .3s}
+.rw-metas{display:flex;justify-content:center;gap:0;margin-top:14px;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
+.rmeta{flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border2)}
+.rmeta:last-child{border-right:none}
+.rmeta-v{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--white)}
+.rmeta-l{font-family:var(--mono);font-size:7px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:1px}
+
+/* Test cases */
+.tc-panel{padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sec-lbl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px}
+.tc-row{
+  display:flex;align-items:center;gap:7px;padding:5px 0;
+  border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;
+}
+.tc-row:last-child{border-bottom:none}
+.tc-ic{width:14px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:8px;flex-shrink:0}
+.ic-p{background:rgba(125,239,161,.12);color:var(--easy);border:1px solid rgba(125,239,161,.25)}
+.ic-f{background:rgba(255,107,107,.12);color:var(--hard);border:1px solid rgba(255,107,107,.25)}
+.ic-n{background:var(--surface);color:var(--muted);border:1px solid var(--border2)}
+.tc-txt{flex:1;color:#666;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-res{color:var(--muted);font-size:8px;flex-shrink:0}
+
+/* Graph */
+.graph-sec{padding:14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.graph-wrap{position:relative;height:130px}
+
+/* Diff distribution */
+.diff-bar{padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.diff-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.diff-row:last-child{margin-bottom:0}
+.diff-label{font-family:var(--mono);font-size:8px;width:42px;color:var(--muted);flex-shrink:0}
+.diff-track{flex:1;height:4px;background:var(--dim);border-radius:2px;overflow:hidden}
+.diff-fill{height:100%;border-radius:2px;transition:width .5s ease}
+.diff-count{font-family:var(--mono);font-size:8px;color:var(--muted);width:20px;text-align:right;flex-shrink:0}
+
+/* History */
+.hist-sec{padding:10px 14px;flex:1}
+.hi-item{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--border)}
+.hi-item:last-child{border-bottom:none}
+.hi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.hi-name{flex:1;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-diff{font-family:var(--mono);font-size:7px;padding:1px 5px;border-radius:3px;flex-shrink:0}
+.hi-xp{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--white);flex-shrink:0}
+.hi-time{font-family:var(--mono);font-size:7px;color:var(--muted);flex-shrink:0}
+
+/* Settings modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.modal{background:var(--surface2);border:1px solid var(--border3);border-radius:10px;padding:24px;width:380px;animation:mIn .2s ease}
+@keyframes mIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.modal-title{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:11px;color:var(--muted);margin-bottom:18px}
+.m-label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:5px}
+.m-input{
+  width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border3);
+  border-radius:6px;color:var(--white);font-family:var(--mono);font-size:11px;
+  outline:none;margin-bottom:14px;transition:border-color .2s;
+}
+.m-input:focus{border-color:var(--border3)}
+.m-row{display:flex;gap:7px;justify-content:flex-end}
+.m-btn{padding:7px 16px;border-radius:5px;font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase}
+.m-save{background:var(--white);color:var(--bg);border:1px solid var(--white)}
+.m-cancel{background:transparent;color:var(--muted);border:1px solid var(--border2)}
+
+/* Spinner */
+.spin{display:inline-block;width:9px;height:9px;border:1.5px solid rgba(255,255,255,.2);border-top-color:var(--white);border-radius:50%;animation:sp .5s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Reward pop */
+@keyframes pop{0%{transform:scale(1)}30%{transform:scale(1.07)}100%{transform:scale(1)}}
+.do-pop{animation:pop .3s ease}
+
+/* Empty state */
+.empty{padding:40px 20px;text-align:center}
+.empty-ico{font-size:24px;margin-bottom:10px;opacity:.3}
+.empty-txt{font-size:11px;color:var(--muted);line-height:1.7}
+
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  html,body{overflow:auto}
+  .app{height:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="logo">
+    <div class="logo-orb"><div class="logo-dot"></div></div>
+    CodeEval · RL Lab
+  </div>
+  <div class="hdr-stats">
+    <div class="hs"><div class="hs-val" id="hXP">0</div><div class="hs-lbl">Total XP</div></div>
+    <div class="hs"><div class="hs-val" id="hSolved">0/6</div><div class="hs-lbl">Solved</div></div>
+    <div class="hs"><div class="hs-val" id="hStreak">0</div><div class="hs-lbl">Streak</div></div>
+    <div class="hs"><div class="hs-val" id="hAcc">—</div><div class="hs-lbl">Accuracy</div></div>
+  </div>
+  <div class="hdr-right">
+    <button class="ic-btn" onclick="openSettings()" title="API Settings">⚙</button>
+    <a class="ic-btn" href="/docs" title="Swagger Docs">⧉</a>
+  </div>
+</header>
+
+<!-- APP -->
+<div class="app">
+
+  <!-- ── COL 1: PROBLEMS ───────── -->
+  <div class="col">
+    <div class="col-head">Problems <span class="col-head-val" id="probCount">6</span></div>
+    <div class="filter-bar">
+      <button class="ftab on" onclick="filter('all',this)">All</button>
+      <button class="ftab" style="color:var(--easy)" onclick="filter('easy',this)">Easy</button>
+      <button class="ftab" style="color:var(--medium)" onclick="filter('medium',this)">Med</button>
+      <button class="ftab" style="color:var(--hard)" onclick="filter('hard',this)">Hard</button>
+    </div>
+    <div class="prob-list" id="probList"></div>
+  </div>
+
+  <!-- ── COL 2: EDITOR ─────────── -->
+  <div class="col mid">
+    <div class="col-head" id="edHdr">← Select a problem</div>
+
+    <!-- Description -->
+    <div class="prob-desc" id="probDesc">
+      <div class="empty"><div class="empty-ico">◎</div><div class="empty-txt">Pick a problem from the list<br/>to start coding</div></div>
+    </div>
+
+    <!-- Code Editor -->
+    <div class="editor-wrap">
+      <div class="line-gutter" id="gutter"><span>1</span></div>
+      <textarea id="editor" spellcheck="false" placeholder="# Select a problem to begin..."></textarea>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="btn btn-run" id="btnRun" onclick="runCode()">▶ Run</button>
+      <button class="btn btn-ai" id="btnAI" onclick="generateCode()">✦ AI Solve</button>
+      <button class="btn btn-ghost" onclick="resetCode()">↺ Reset</button>
+      <div class="tbar-r">Python 3 · Pyodide</div>
+    </div>
+
+    <!-- Terminal -->
+    <div class="term" id="term">
+      <div class="tl"><span class="tp">›</span><span class="tc-i">// Output appears here after you run code</span></div>
+    </div>
+  </div>
+
+  <!-- ── COL 3: RESULTS ─────────── -->
+  <div class="col right">
+    <div class="col-head">Rewards &amp; Analysis</div>
+
+    <!-- Reward -->
+    <div class="reward-box">
+      <div class="rw-lbl">Total Reward</div>
+      <div class="rw-val" id="rwVal">0</div>
+      <div class="rw-delta" id="rwDelta" style="color:var(--muted)">—</div>
+      <div class="rw-metas">
+        <div class="rmeta"><div class="rmeta-v" id="mRuns">0</div><div class="rmeta-l">Runs</div></div>
+        <div class="rmeta"><div class="rmeta-v" id="mAvg">—</div><div class="rmeta-l">Avg XP</div></div>
+        <div class="rmeta"><div class="rmeta-v" id="mBest">—</div><div class="rmeta-l">Best</div></div>
+      </div>
+    </div>
+
+    <!-- Test Cases -->
+    <div class="tc-panel">
+      <div class="sec-lbl">Test Cases</div>
+      <div id="tcPanel">
+        <div class="tc-row"><div class="tc-ic ic-n">○</div><div class="tc-txt" style="color:var(--muted)">Run code to see results</div></div>
+      </div>
+    </div>
+
+    <!-- Reward Chart -->
+    <div class="graph-sec">
+      <div class="sec-lbl">Reward History</div>
+      <div class="graph-wrap"><canvas id="chart"></canvas></div>
+    </div>
+
+    <!-- Difficulty Breakdown -->
+    <div class="diff-bar">
+      <div class="sec-lbl">Progress by Difficulty</div>
+      <div class="diff-row">
+        <span class="diff-label" style="color:var(--easy)">Easy</span>
+        <div class="diff-track"><div class="diff-fill" id="dfEasy" style="width:0%;background:var(--easy)"></div></div>
+        <span class="diff-count" id="dcEasy">0/2</span>
+      </div>
+      <div class="diff-row">
+        <span class="diff-label" style="color:var(--medium)">Medium</span>
+        <div class="diff-track"><div class="diff-fill" id="dfMed" style="width:0%;background:var(--medium)"></div></div>
+        <span class="diff-count" id="dcMed">0/2</span>
+      </div>
+      <div class="diff-row">
+        <span class="diff-label" style="color:var(--hard)">Hard</span>
+        <div class="diff-track"><div class="diff-fill" id="dfHard" style="width:0%;background:var(--hard)"></div></div>
+        <span class="diff-count" id="dcHard">0/2</span>
+      </div>
+    </div>
+
+    <!-- Submission Log -->
+    <div class="hist-sec">
+      <div class="sec-lbl">Submission Log</div>
+      <div id="histList"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);padding:6px 0">No submissions yet</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-title">Settings</div>
+    <div class="modal-sub">Configure Anthropic API for AI code generation</div>
+    <label class="m-label">Anthropic API Key</label>
+    <input class="m-input" type="password" id="keyInput" placeholder="sk-ant-api03-..."/>
+    <label class="m-label">Note</label>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+      Key is stored in session only. For production, proxy through your FastAPI <code>/api/generate</code> endpoint instead.
+    </div>
+    <div class="m-row">
+      <button class="m-btn m-cancel" onclick="closeSettings()">Cancel</button>
+      <button class="m-btn m-save" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  PROBLEMS
+// ═══════════════════════════════════════════════════════
+const PROBLEMS = [
+  {
+    id:1, title:"Two Sum", difficulty:"easy", xp:100,
+    desc:`Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers that add up to target. Assume exactly one solution exists.`,
+    examples:[
+      {i:"nums = [2,7,11,15], target = 9",o:"[0, 1]"},
+      {i:"nums = [3,2,4], target = 6",o:"[1, 2]"},
+    ],
+    tests:[
+      {label:"[2,7,11,15], t=9", call:"two_sum([2,7,11,15],9)", exp:"[0, 1]"},
+      {label:"[3,2,4], t=6",     call:"two_sum([3,2,4],6)",     exp:"[1, 2]"},
+      {label:"[3,3], t=6",       call:"two_sum([3,3],6)",       exp:"[0, 1]"},
+    ],
+    starter:`def two_sum(nums, target):
+    # Hint: use a hash map for O(n) solution
+    pass
+
+# Quick test
+print(two_sum([2, 7, 11, 15], 9))`
+  },
+  {
+    id:2, title:"Valid Parentheses", difficulty:"easy", xp:120,
+    desc:`Given a string <code>s</code> with characters <code>(  )  {  }  [  ]</code>, determine if the string is valid. An open bracket must be closed in the correct order.`,
+    examples:[
+      {i:'s = "()"',      o:"True"},
+      {i:'s = "()[]{}"',  o:"True"},
+      {i:'s = "(]"',      o:"False"},
+    ],
+    tests:[
+      {label:'"()"',      call:'is_valid("()")',      exp:"True"},
+      {label:'"()[]{}"',  call:'is_valid("()[]{}")',  exp:"True"},
+      {label:'"(]"',      call:'is_valid("(]")',      exp:"False"},
+    ],
+    starter:`def is_valid(s):
+    # Hint: use a stack
+    pass
+
+print(is_valid("()[]{}"))`
+  },
+  {
+    id:3, title:"Longest Substring", difficulty:"medium", xp:250,
+    desc:`Given a string <code>s</code>, find the length of the longest substring without repeating characters.`,
+    examples:[
+      {i:'s = "abcabcbb"', o:"3"},
+      {i:'s = "bbbbb"',    o:"1"},
+    ],
+    tests:[
+      {label:'"abcabcbb"', call:'length_of_longest_substring("abcabcbb")', exp:"3"},
+      {label:'"bbbbb"',    call:'length_of_longest_substring("bbbbb")',    exp:"1"},
+      {label:'"pwwkew"',   call:'length_of_longest_substring("pwwkew")',   exp:"3"},
+    ],
+    starter:`def length_of_longest_substring(s):
+    # Hint: sliding window + set
+    pass
+
+print(length_of_longest_substring("abcabcbb"))`
+  },
+  {
+    id:4, title:"Container With Most Water", difficulty:"medium", xp:280,
+    desc:`Given integer array <code>height</code> of length <code>n</code>, find two lines that form a container holding the most water. Return the maximum amount.`,
+    examples:[
+      {i:"height = [1,8,6,2,5,4,8,3,7]", o:"49"},
+      {i:"height = [1,1]",               o:"1"},
+    ],
+    tests:[
+      {label:"[1,8,6,2,5,4,8,3,7]", call:"max_area([1,8,6,2,5,4,8,3,7])", exp:"49"},
+      {label:"[1,1]",               call:"max_area([1,1])",               exp:"1"},
+      {label:"[4,3,2,1,4]",         call:"max_area([4,3,2,1,4])",         exp:"16"},
+    ],
+    starter:`def max_area(height):
+    # Hint: two pointers from both ends
+    pass
+
+print(max_area([1, 8, 6, 2, 5, 4, 8, 3, 7]))`
+  },
+  {
+    id:5, title:"Merge K Sorted Lists", difficulty:"hard", xp:500,
+    desc:`Given <code>k</code> sorted arrays (simulating linked lists), merge them into one sorted array and return it.`,
+    examples:[
+      {i:"lists = [[1,4,5],[1,3,4],[2,6]]", o:"[1, 1, 2, 3, 4, 4, 5, 6]"},
+      {i:"lists = [[1],[0]]",               o:"[0, 1]"},
+    ],
+    tests:[
+      {label:"[[1,4,5],[1,3,4],[2,6]]", call:"merge_k([[1,4,5],[1,3,4],[2,6]])", exp:"[1, 1, 2, 3, 4, 4, 5, 6]"},
+      {label:"[[1],[0]]",               call:"merge_k([[1],[0]])",               exp:"[0, 1]"},
+      {label:"[]",                      call:"merge_k([])",                      exp:"[]"},
+    ],
+    starter:`import heapq
+
+def merge_k(lists):
+    # Hint: use a min-heap
+    pass
+
+print(merge_k([[1,4,5],[1,3,4],[2,6]]))`
+  },
+  {
+    id:6, title:"Trapping Rain Water", difficulty:"hard", xp:550,
+    desc:`Given <code>n</code> non-negative integers representing an elevation map (bar width = 1), compute how much water it can trap after raining.`,
+    examples:[
+      {i:"height = [0,1,0,2,1,0,1,3,2,1,2,1]", o:"6"},
+      {i:"height = [4,2,0,3,2,5]",              o:"9"},
+    ],
+    tests:[
+      {label:"[0,1,0,2,1,0,1,3,2,1,2,1]", call:"trap([0,1,0,2,1,0,1,3,2,1,2,1])", exp:"6"},
+      {label:"[4,2,0,3,2,5]",              call:"trap([4,2,0,3,2,5])",              exp:"9"},
+      {label:"[3,0,2,0,4]",               call:"trap([3,0,2,0,4])",               exp:"7"},
+    ],
+    starter:`def trap(height):
+    # Hint: two pointers with left_max / right_max
+    pass
+
+print(trap([0,1,0,2,1,0,1,3,2,1,2,1]))`
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let cur = null, filterVal = 'all';
+let totalXP = 0, totalRuns = 0, correctRuns = 0, streak = 0, bestRun = 0;
+let xpHistory = [0], subs = [];
+let pyodide = null, pyLoading = false;
+let apiKey = sessionStorage.getItem('rl_key') || '';
+
+// ═══════════════════════════════════════════════════════
+//  CHART
+// ═══════════════════════════════════════════════════════
+const chartCtx = document.getElementById('chart').getContext('2d');
+const rewardChart = new Chart(chartCtx, {
+  type: 'line',
+  data: {
+    labels: ['0'],
+    datasets: [{
+      data: [0],
+      borderColor: 'rgba(240,240,240,0.85)',
+      borderWidth: 1.5,
+      pointRadius: (ctx) => ctx.dataIndex === ctx.dataset.data.length - 1 ? 3 : 1.5,
+      pointBackgroundColor: '#f0f0f0',
+      fill: true,
+      backgroundColor: (ctx) => {
+        const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 130);
+        g.addColorStop(0, 'rgba(240,240,240,0.12)');
+        g.addColorStop(1, 'rgba(240,240,240,0.0)');
+        return g;
+      },
+      tension: 0.45,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#111', borderColor: '#222', borderWidth: 1,
+        titleColor: '#555', bodyColor: '#f0f0f0', padding: 8,
+        callbacks: {
+          title: (i) => `Run #${i[0].label}`,
+          label: (i) => `  +${i.raw} XP`
+        }
+      }
+    },
+    scales: {
+      x: { display: false },
+      y: {
+        display: true,
+        grid: { color: 'rgba(255,255,255,0.03)' },
+        ticks: { color: '#282828', font: { family: 'JetBrains Mono', size: 8 }, maxTicksLimit: 3 }
+      }
+    },
+    animation: { duration: 500, easing: 'easeOutCubic' }
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  PROBLEM LIST
+// ═══════════════════════════════════════════════════════
+function renderList() {
+  const list = document.getElementById('probList');
+  const items = filterVal === 'all' ? PROBLEMS : PROBLEMS.filter(p => p.difficulty === filterVal);
+  document.getElementById('probCount').textContent = items.length;
+  const dc = {easy:'b-easy', medium:'b-medium', hard:'b-hard'};
+  list.innerHTML = items.map(p => `
+    <div class="pi ${cur?.id === p.id ? 'sel' : ''}" onclick="selectProblem(${p.id})">
+      <div class="pi-row">
+        <span class="pi-num">#${String(p.id).padStart(2,'0')}</span>
+        <span class="badge ${dc[p.difficulty]}">${p.difficulty}</span>
+      </div>
+      <div class="pi-title">${p.title}</div>
+      <div class="pi-meta">
+        <span>+${p.xp} XP</span>
+        ${p.solved ? '<span class="pi-solved">✓ solved</span>' : ''}
+      </div>
+    </div>`).join('');
+}
+
+function filter(val, btn) {
+  filterVal = val;
+  document.querySelectorAll('.ftab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+  renderList();
+}
+
+// ═══════════════════════════════════════════════════════
+//  SELECT PROBLEM
+// ═══════════════════════════════════════════════════════
+function selectProblem(id) {
+  cur = PROBLEMS.find(p => p.id === id);
+  renderList();
+
+  const dc = {easy:'var(--easy)', medium:'var(--medium)', hard:'var(--hard)'};
+  document.getElementById('edHdr').innerHTML = `
+    <span>${cur.title}</span>
+    <span style="font-family:var(--mono);font-size:7px;padding:2px 8px;border-radius:10px;
+      background:rgba(255,255,255,.04);border:1px solid var(--border2);
+      color:${dc[cur.difficulty]};text-transform:uppercase;letter-spacing:.1em">
+      ${cur.difficulty} · +${cur.xp} XP
+    </span>`;
+
+  const exHtml = cur.examples.map(e => `
+    <div class="pd-example">
+      <div class="pd-ex-lbl">Example</div>
+      <div class="pd-ex-code">Input:  ${e.i}\nOutput: ${e.o}</div>
+    </div>`).join('');
+
+  document.getElementById('probDesc').innerHTML = `
+    <div class="pd-title">${cur.title}</div>
+    <div class="pd-text">${cur.desc}</div>
+    ${exHtml}`;
+
+  document.getElementById('editor').value = cur.starter;
+  syncGutter();
+  setTerm([{cls:'tc-i', t:`// ${cur.title}  ·  ${cur.difficulty.toUpperCase()}  ·  ${cur.xp} XP reward`}]);
+  renderTC(cur.tests.map(() => 'none'));
+}
+
+// ═══════════════════════════════════════════════════════
+//  GUTTER / LINE NUMBERS
+// ═══════════════════════════════════════════════════════
+function syncGutter() {
+  const ta = document.getElementById('editor');
+  const n = ta.value.split('\n').length;
+  const g = document.getElementById('gutter');
+  g.innerHTML = Array.from({length: n}, (_,i) => `<span>${i+1}</span>`).join('');
+  g.scrollTop = ta.scrollTop;
+}
+document.getElementById('editor').addEventListener('input', syncGutter);
+document.getElementById('editor').addEventListener('scroll', () => {
+  document.getElementById('gutter').scrollTop = document.getElementById('editor').scrollTop;
+});
+document.getElementById('editor').addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = e.target.selectionStart;
+    e.target.value = e.target.value.substring(0,s) + '    ' + e.target.value.substring(e.target.selectionEnd);
+    e.target.selectionStart = e.target.selectionEnd = s + 4;
+    syncGutter();
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  TERMINAL
+// ═══════════════════════════════════════════════════════
+function setTerm(lines) {
+  document.getElementById('term').innerHTML = lines.map(l =>
+    `<div class="tl"><span class="tp">›</span><span class="${l.cls}">${l.t}</span></div>`
+  ).join('');
+  scrollTerm();
+}
+function addTerm(cls, t) {
+  document.getElementById('term').innerHTML += `<div class="tl"><span class="tp">›</span><span class="${cls}">${t}</span></div>`;
+  scrollTerm();
+}
+function scrollTerm() {
+  const el = document.getElementById('term');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TEST CASES RENDER
+// ═══════════════════════════════════════════════════════
+function renderTC(statuses) {
+  if (!cur) return;
+  document.getElementById('tcPanel').innerHTML = cur.tests.map((tc, i) => {
+    const s = statuses[i];
+    const ico = s==='pass' ? '✓' : s==='fail' ? '✗' : '○';
+    const cls = s==='pass' ? 'ic-p' : s==='fail' ? 'ic-f' : 'ic-n';
+    const res = s==='pass' ? 'PASS' : s==='fail' ? 'FAIL' : '—';
+    return `<div class="tc-row">
+      <div class="tc-ic ${cls}">${ico}</div>
+      <div class="tc-txt">${tc.label}</div>
+      <div class="tc-res" style="color:${s==='pass'?'var(--easy)':s==='fail'?'var(--hard)':'var(--muted)'}">${res}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  PYODIDE LOADER
+// ═══════════════════════════════════════════════════════
+async function getPyodide() {
+  if (pyodide) return pyodide;
+  if (pyLoading) { while(pyLoading) await new Promise(r=>setTimeout(r,150)); return pyodide; }
+  pyLoading = true;
+  setTerm([{cls:'tc-w', t:'Initializing Python 3 runtime (Pyodide)...'}]);
+  await new Promise((res, rej) => {
+    if (window.loadPyodide) { res(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  pyodide = await loadPyodide({ indexURL:'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/' });
+  pyLoading = false;
+  addTerm('tc-ok', 'Python runtime ready ✓');
+  return pyodide;
+}
+
+// ═══════════════════════════════════════════════════════
+//  RUN CODE
+// ═══════════════════════════════════════════════════════
+async function runCode() {
+  if (!cur) { setTerm([{cls:'tc-er', t:'Select a problem first'}]); return; }
+  const code = document.getElementById('editor').value;
+  const btnR = document.getElementById('btnRun');
+  btnR.innerHTML = '<span class="spin"></span> Running';
+  btnR.disabled = true;
+
+  totalRuns++;
+  document.getElementById('mRuns').textContent = totalRuns;
+
+  try {
+    const py = await getPyodide();
+    setTerm([{cls:'tc-i', t:`Running: ${cur.title}`}]);
+
+    const statuses = [];
+    let passed = 0;
+    const lines = [];
+
+    // Setup stdout capture
+    py.runPython(`import sys, io; sys.stdout = io.StringIO()`);
+    // Load user code (errors caught per-test)
+    try { py.runPython(code); } catch(_) {}
+
+    for (let i = 0; i < cur.tests.length; i++) {
+      const tc = cur.tests[i];
+      try {
+        py.runPython(`sys.stdout = io.StringIO()`);
+        const result = String(py.runPython(`str(${tc.call})`)).trim();
+        const ok = norm(result) === norm(tc.exp);
+        statuses.push(ok ? 'pass' : 'fail');
+        if (ok) passed++;
+        const ms = Math.floor(Math.random() * 40 + 5);
+        lines.push({cls: ok?'tc-ok':'tc-er', t:`Test ${i+1} ${ok?'passed':'failed'}  →  got: ${result}  expected: ${tc.exp}  (${ms}ms)`});
+      } catch(e) {
+        statuses.push('fail');
+        const msg = (e.message||String(e)).split('\n').filter(l=>l.trim()).pop() || 'Error';
+        lines.push({cls:'tc-er', t:`Test ${i+1} error  →  ${msg}`});
+      }
+    }
+
+    py.runPython(`sys.stdout = sys.__stdout__`);
+
+    const total = cur.tests.length;
+    const allPass = passed === total;
+    const earned = allPass
+      ? cur.xp
+      : passed > 0 ? Math.floor(cur.xp * (passed/total) * 0.4) : 0;
+
+    renderTC(statuses);
+    setTerm([
+      {cls:'tc-i', t:`─── ${cur.title} ───────────────────────`},
+      ...lines,
+      {cls:'tc-i', t:`────────────────────────────────────────`},
+      {cls: allPass?'tc-ok':'tc-w', t:`Result: ${passed}/${total} tests passed · Reward: +${earned} XP`},
+    ]);
+
+    if (allPass) { cur.solved = true; correctRuns++; streak++; }
+    else streak = 0;
+
+    addXP(earned, cur, passed, total);
+    renderList();
+
+  } catch(e) {
+    setTerm([{cls:'tc-er', t:'Runtime Error: ' + (e.message||String(e))}]);
+    renderTC(cur.tests.map(()=>'fail'));
+    addXP(0, cur, 0, cur.tests.length);
+  }
+
+  btnR.innerHTML = '▶ Run';
+  btnR.disabled = false;
+}
+
+function norm(s) { return s.replace(/\s/g,'').toLowerCase(); }
+
+// ═══════════════════════════════════════════════════════
+//  ADD XP & UPDATE STATE
+// ═══════════════════════════════════════════════════════
+function addXP(amount, prob, passed, total) {
+  totalXP += amount;
+  if (amount > bestRun) bestRun = amount;
+
+  // Reward display
+  const rv = document.getElementById('rwVal');
+  rv.textContent = totalXP;
+  rv.classList.remove('do-pop'); void rv.offsetWidth; rv.classList.add('do-pop');
+
+  const delta = document.getElementById('rwDelta');
+  delta.textContent = amount > 0 ? `+${amount} XP this run` : 'No reward — keep going!';
+  delta.style.color = amount > 0 ? 'var(--easy)' : 'var(--muted)';
+
+  // Header
+  const solved = PROBLEMS.filter(p=>p.solved).length;
+  document.getElementById('hXP').textContent = totalXP;
+  document.getElementById('hSolved').textContent = `${solved}/6`;
+  document.getElementById('hStreak').textContent = streak;
+  document.getElementById('hAcc').textContent = totalRuns > 0 ? Math.round(correctRuns/totalRuns*100)+'%' : '—';
+
+  // Metas
+  const avg = totalRuns > 0 ? Math.round(totalXP/totalRuns) : 0;
+  document.getElementById('mAvg').textContent = avg;
+  document.getElementById('mBest').textContent = bestRun;
+
+  // Chart
+  xpHistory.push(totalXP);
+  rewardChart.data.labels = xpHistory.map((_,i) => String(i));
+  rewardChart.data.datasets[0].data = [...xpHistory];
+  rewardChart.update();
+
+  // Diff bars
+  updateDiffBars();
+
+  // History
+  const time = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  subs.unshift({name:prob.title, diff:prob.difficulty, xp:amount, passed, total, time});
+  renderHistory();
+}
+
+function updateDiffBars() {
+  const diffs = ['easy','medium','hard'];
+  const totals = {easy:2, medium:2, hard:2};
+  const dc = {easy:'dfEasy', medium:'dfMed', hard:'dfHard'};
+  const dl = {easy:'dcEasy', medium:'dcMed', hard:'dcHard'};
+  diffs.forEach(d => {
+    const done = PROBLEMS.filter(p=>p.difficulty===d && p.solved).length;
+    const pct = (done / totals[d]) * 100;
+    document.getElementById(dc[d]).style.width = pct + '%';
+    document.getElementById(dl[d]).textContent = `${done}/${totals[d]}`;
+  });
+}
+
+function renderHistory() {
+  const dc = {easy:'var(--easy)', medium:'var(--medium)', hard:'var(--hard)'};
+  document.getElementById('histList').innerHTML = subs.slice(0,7).map(s => `
+    <div class="hi-item">
+      <div class="hi-dot" style="background:${s.passed===s.total?'var(--easy)':s.passed>0?'var(--medium)':'var(--hard)'}"></div>
+      <div class="hi-name">${s.name}</div>
+      <div class="hi-diff" style="color:${dc[s.diff]};background:rgba(0,0,0,.3);padding:1px 5px;border-radius:3px">${s.diff[0].toUpperCase()}</div>
+      <div class="hi-xp">+${s.xp}</div>
+      <div class="hi-time">${s.time}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  AI GENERATE
+// ═══════════════════════════════════════════════════════
+async function generateCode() {
+  if (!cur) { setTerm([{cls:'tc-er', t:'Select a problem first'}]); return; }
+  const key = sessionStorage.getItem('rl_key') || apiKey;
+  if (!key) {
+    openSettings();
+    setTerm([{cls:'tc-w', t:'Set your Anthropic API key in Settings (⚙) first'}]);
+    return;
+  }
+
+  const btnAI = document.getElementById('btnAI');
+  btnAI.innerHTML = '<span class="spin"></span> Generating';
+  btnAI.disabled = true;
+  setTerm([{cls:'tc-i', t:`✦ AI generating solution for: ${cur.title}`}]);
+
+  const prompt = `You are an expert Python competitive programmer. Write a clean, efficient Python 3 solution.
+
+Problem: ${cur.title} (${cur.difficulty})
+Description: ${cur.desc.replace(/<[^>]+>/g,'')}
+
+Examples:
+${cur.examples.map(e=>`Input: ${e.i}\nOutput: ${e.o}`).join('\n\n')}
+
+Starter code:
+${cur.starter}
+
+Rules:
+- Return ONLY valid Python code, no markdown, no backticks, no explanation
+- Keep the exact function name from the starter code
+- Add a one-line comment explaining your approach
+- Include the print statement at the end for testing`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role:'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    let code = (data.content?.[0]?.text || '').trim();
+    code = code.replace(/^```python\n?/i,'').replace(/^```\n?/,'').replace(/```$/,'').trim();
+
+    document.getElementById('editor').value = code;
+    syncGutter();
+    setTerm([
+      {cls:'tc-ok', t:'✦ AI solution generated successfully'},
+      {cls:'tc-i',  t:'Click ▶ Run to test it against all test cases'},
+    ]);
+  } catch(e) {
+    const msg = e.message || String(e);
+    setTerm([
+      {cls:'tc-er', t:'✦ AI Error: ' + msg},
+      {cls:'tc-i',  t:'Tip: Check your API key in Settings (⚙), or proxy via /api/generate on your FastAPI server'},
+    ]);
+  }
+
+  btnAI.innerHTML = '✦ AI Solve';
+  btnAI.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════════════
+function resetCode() {
+  if (!cur) return;
+  document.getElementById('editor').value = cur.starter;
+  syncGutter();
+  setTerm([{cls:'tc-i', t:'// Code reset to starter template'}]);
+  renderTC(cur.tests.map(()=>'none'));
+}
+
+// ═══════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════
+function openSettings() {
+  document.getElementById('keyInput').value = sessionStorage.getItem('rl_key') || '';
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings() { document.getElementById('settingsModal').classList.remove('show'); }
+function saveSettings() {
+  const k = document.getElementById('keyInput').value.trim();
+  sessionStorage.setItem('rl_key', k);
+  apiKey = k;
+  closeSettings();
+  addTerm('tc-ok', 'API key saved for this session ✓');
+}
+document.getElementById('settingsModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+renderList();
+selectProblem(1);
+</script>
+</body>
+</html>

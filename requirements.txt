@@ -1,0 +1,8 @@
+streamlit
+pydantic
+transformers
+torch
+openai
+plotly
+fastapi 
+uvicorn

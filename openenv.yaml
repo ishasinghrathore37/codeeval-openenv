@@ -1,0 +1,9 @@
+name: codeeval-env
+version: 1.0
+
+entry_point: inference.py
+
+endpoints:
+  reset: /reset
+  step: /step
+  state: /state
