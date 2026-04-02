@@ -5,4 +5,4 @@ COPY . /app
 
 RUN pip install fastapi uvicorn openai
 
-CMD ["python", "server/app.py"]
+CMD ["python", "./server/app.py"]
