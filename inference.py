@@ -1,51 +1,60 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+import uvicorn
 import os
 from openai import OpenAI
-import uvicorn
-
 
 app = FastAPI()
 
-@app.get("/")
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+@app.get("/", response_class=HTMLResponse)
 def home():
-    with open("index.html","r",encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    try:
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except:
+        return "<h1>UI not found</h1>"
 
-
-API_BASE_URL = os.getenv("API_BASE_URL")
-MODEL_NAME = os.getenv("MODEL_NAME")
-HF_TOKEN = os.getenv("HF_TOKEN")
-
-client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=HF_TOKEN
-)
-
-# Reset endpoint
 @app.post("/reset")
 def reset():
-    return {"state": "Environment reset successful"}
+    return {"status": "reset"}
 
-# Step endpoint
 @app.post("/step")
 def step(data: dict):
-    prompt = data.get("action", "")
+    try:
+        user_input = data.get("input", "Hello")
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
-    )
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": user_input}
+            ]
+        )
 
-    return {
-        "response": response.choices[0].message.content,
-        "reward": 0.8
-    }
+        output = response.choices[0].message.content
+
+        return {
+            "response": output,
+            "reward": 1.0
+        }
+
+    except Exception as e:
+        
+        return {
+            "response": "error handled",
+            "reward": 0.0,
+            "error": str(e)
+        }
 
 @app.get("/state")
 def state():
     return {"status": "running"}
 
+
+# ✅ Run server
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=7860)
